@@ -9,7 +9,7 @@ crons = ["10 17 * * *", "15 17 * * *", "20 17 * * *", "3 0 * * *"]
 
 # Напоминание: Удалите переменные отсюда и используйте `npx wrangler secret put`
 [vars]
-TELEGRAM_BOT_TOKEN = "8829416211:AAFWmyZa3JvG9bX6hPNWWGW8VGgB5Mgg6BY"
+TELEGRAM_BOT_TOKEN = "8659338389:AAHAqz7ldUPYgC-G7zWnREDCTfYqX-ap9Fg"
 FIREBASE_LOGIN_URL = "https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key=AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating4"
 ADMIN_CHAT_ID = "7729315191"
