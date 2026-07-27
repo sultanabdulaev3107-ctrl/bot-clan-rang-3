@@ -1,9 +1,5 @@
 import { Telegraf } from 'telegraf';
 import axios from 'axios';
-import { ACCOUNTS as PART1 } from './accounts_1.js';
-import { ACCOUNTS as PART2 } from './accounts_2.js';
-import { ACCOUNTS as PART3 } from './accounts_3.js';
-import { ACCOUNTS as PART4 } from './accounts_4.js'; // Добавляем импорт
 
 async function login(email, password, url) {
   try {
@@ -36,14 +32,25 @@ export default {
     const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
     const chatId = env.ADMIN_CHAT_ID;
     
+    // Получаем ВСЕ аккаунты из KV хранилища
+    const allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" });
+    
+    if (!allAccounts || allAccounts.length === 0) {
+        console.log("Аккаунты не найдены в KV");
+        return;
+    }
+
     const minute = new Date(event.scheduledTime).getUTCMinutes();
     let accounts = [];
     let name = "";
 
-    if (minute === 10) { accounts = PART1; name = "PART1"; }
-    else if (minute === 15) { accounts = PART2; name = "PART2"; }
-    else if (minute === 20) { accounts = PART3; name = "PART3"; }
-    else if (minute === 3) { accounts = PART4; name = "PART4"; } // Новое условие
+    // Распределение 100 аккаунтов на 6 партов каждые 5 минут (соответствует 20:00 – 20:25 МСК)
+    if (minute === 0) { accounts = allAccounts.slice(0, 17); name = "PART 1 (20:00 МСК)"; }
+    else if (minute === 5) { accounts = allAccounts.slice(17, 34); name = "PART 2 (20:05 МСК)"; }
+    else if (minute === 10) { accounts = allAccounts.slice(34, 51); name = "PART 3 (20:10 МСК)"; }
+    else if (minute === 15) { accounts = allAccounts.slice(51, 68); name = "PART 4 (20:15 МСК)"; }
+    else if (minute === 20) { accounts = allAccounts.slice(68, 85); name = "PART 5 (20:20 МСК)"; }
+    else if (minute === 25) { accounts = allAccounts.slice(85); name = "PART 6 (20:25 МСК)"; }
 
     if (accounts.length > 0) {
       await bot.telegram.sendMessage(chatId, `🚀 Запуск ${name}...`);
@@ -51,10 +58,15 @@ export default {
       let success = 0;
       for (const acc of accounts) {
         const token = await login(acc.email, acc.password, env.FIREBASE_LOGIN_URL);
-        if (token && await setRank(token, env.RANK_URL)) success++;
+        if (token && await setRank(token, env.RANK_URL)) {
+          success++;
+        } else {
+          // Если на аккаунте ошибка, бот шлет уведомление, но НЕ останавливает цикл и продолжает дальше
+          await bot.telegram.sendMessage(chatId, `❌ Ошибка на аккаунте: ${acc.email}`);
+        }
       }
       
-      const status = (success === accounts.length) ? "✅ Успешно" : `❌ Ошибка (${success}/${accounts.length})`;
+      const status = (success === accounts.length) ? "✅ Успешно" : `⚠️ Завершено с ошибками (${success}/${accounts.length})`;
       await bot.telegram.sendMessage(chatId, `${status} ${name}`);
     }
   }
