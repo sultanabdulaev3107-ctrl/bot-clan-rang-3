@@ -1,4 +1,4 @@
-name = "bot-clan-rang-2"
+name = "bot-clan-rang-20"
 main = "index.js"
 compatibility_date = "2026-05-23"
 compatibility_flags = ["nodejs_compat"]
