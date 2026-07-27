@@ -4,7 +4,7 @@ compatibility_date = "2026-05-23"
 compatibility_flags = ["nodejs_compat"]
 
 [triggers]
-# Запуск каждые 5 минут с 17:00 до 17:25 UTC (что равно 20:00 – 20:25 по МСК)
+# Запуск каждые 5 минут с 17:00 до 17:25 UTC (20:00 – 20:25 по МСК)
 crons = [
   "0 17 * * *",
   "5 17 * * *",
@@ -22,4 +22,4 @@ ADMIN_CHAT_ID = "7729315191"
 
 [[kv_namespaces]]
 binding = "ACCOUNTS_KV"
-id = "Ea1b2774c4124c519d0fb07171ff9503"
+id = "90d21a2b6950466c8a81957cdfbd3c1b"
