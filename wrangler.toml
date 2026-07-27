@@ -4,15 +4,7 @@ compatibility_date = "2026-05-23"
 compatibility_flags = ["nodejs_compat"]
 
 [triggers]
-# Запуск каждые 5 минут с 17:00 до 17:25 UTC (20:00 – 20:25 по МСК)
-crons = [
-  "0 17 * * *",
-  "5 17 * * *",
-  "10 17 * * *",
-  "15 17 * * *",
-  "20 17 * * *",
-  "25 17 * * *"
-]
+crons = ["0 17 * * *", "5 17 * * *", "10 17 * * *", "15 17 * * *", "20 17 * * *", "25 17 * * *"]
 
 [vars]
 TELEGRAM_BOT_TOKEN = "8659338389:AAHAqz7ldUPYgC-G7zWnREDCTfYqX-ap9Fg"
