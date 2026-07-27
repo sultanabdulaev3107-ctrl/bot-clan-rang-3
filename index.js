@@ -28,46 +28,124 @@ async function setRank(token, url) {
 }
 
 export default {
+  // 1. Автоматический запуск по расписанию (по 19 аккаунтов на парт, отчеты только вам)
   async scheduled(event, env, ctx) {
     const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
-    const chatId = env.ADMIN_CHAT_ID;
+    const chatId = env.ADMIN_CHAT_ID; // 7729315191
     
-    // Получаем ВСЕ аккаунты из KV хранилища
     const allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" });
-    
-    if (!allAccounts || allAccounts.length === 0) {
-        console.log("Аккаунты не найдены в KV");
-        return;
-    }
+    if (!allAccounts || allAccounts.length === 0) return;
 
     const minute = new Date(event.scheduledTime).getUTCMinutes();
-    let accounts = [];
+    let startIndex = 0;
     let name = "";
 
-    // Распределение 100 аккаунтов на 6 партов каждые 5 минут (соответствует 20:00 – 20:25 МСК)
-    if (minute === 0) { accounts = allAccounts.slice(0, 17); name = "PART 1 (20:00 МСК)"; }
-    else if (minute === 5) { accounts = allAccounts.slice(17, 34); name = "PART 2 (20:05 МСК)"; }
-    else if (minute === 10) { accounts = allAccounts.slice(34, 51); name = "PART 3 (20:10 МСК)"; }
-    else if (minute === 15) { accounts = allAccounts.slice(51, 68); name = "PART 4 (20:15 МСК)"; }
-    else if (minute === 20) { accounts = allAccounts.slice(68, 85); name = "PART 5 (20:20 МСК)"; }
-    else if (minute === 25) { accounts = allAccounts.slice(85); name = "PART 6 (20:25 МСК)"; }
+    if (minute === 0) { startIndex = 0; name = "PART 1 (20:00 МСК)"; }
+    else if (minute === 5) { startIndex = 19; name = "PART 2 (20:05 МСК)"; }
+    else if (minute === 10) { startIndex = 38; name = "PART 3 (20:10 МСК)"; }
+    else if (minute === 15) { startIndex = 57; name = "PART 4 (20:15 МСК)"; }
+    else if (minute === 20) { startIndex = 76; name = "PART 5 (20:20 МСК)"; }
+    else if (minute === 25) { startIndex = 95; name = "PART 6 (20:25 МСК)"; }
+
+    const accounts = allAccounts.slice(startIndex, startIndex + 19);
 
     if (accounts.length > 0) {
       await bot.telegram.sendMessage(chatId, `🚀 Запуск ${name}...`);
-      
       let success = 0;
       for (const acc of accounts) {
         const token = await login(acc.email, acc.password, env.FIREBASE_LOGIN_URL);
         if (token && await setRank(token, env.RANK_URL)) {
           success++;
         } else {
-          // Если на аккаунте ошибка, бот шлет уведомление, но НЕ останавливает цикл и продолжает дальше
           await bot.telegram.sendMessage(chatId, `❌ Ошибка на аккаунте: ${acc.email}`);
         }
       }
-      
       const status = (success === accounts.length) ? "✅ Успешно" : `⚠️ Завершено с ошибками (${success}/${accounts.length})`;
       await bot.telegram.sendMessage(chatId, `${status} ${name}`);
     }
+  },
+
+严// 2. Обработка команд (строгая проверка на ваш ID)
+  async fetch(request, env, ctx) {
+    const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
+    const ADMIN_ID = env.ADMIN_CHAT_ID.toString();
+
+    // Промежуточная проверка внутри Telegraf: если пишет не создатель — игнорируем
+    bot.use(async (ctx, next) => {
+      if (!ctx.chat || ctx.chat.id.toString() !== ADMIN_ID) {
+        return; // Молча игнорируем чужие сообщения и команды
+      }
+      return next();
+    });
+
+    // Добавить аккаунт: /add email password
+    bot.command('add', async (ctx) => {
+      const args = ctx.message.text.split(' ');
+      if (args.length < 3) return ctx.reply('⚠️ Формат: /add email password');
+
+      const email = args[1];
+      const password = args[2];
+
+      try {
+        let allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" }) || [];
+        if (allAccounts.some(acc => acc.email === email)) {
+          return ctx.reply(`⚠️ Аккаунт ${email} уже есть в базе.`);
+        }
+        allAccounts.push({ email, password });
+        await env.ACCOUNTS_KV.put("accounts_list", JSON.stringify(allAccounts));
+        return ctx.reply(`✅ Аккаунт добавлен!\n📧 ${email}\n🔑 ${password}\nВсего в базе: ${allAccounts.length}`);
+      } catch (e) {
+        return ctx.reply(`❌ Ошибка: ${e.message}`);
+      }
+    });
+
+    // Удалить аккаунт: /del email
+    bot.command('del', async (ctx) => {
+      const args = ctx.message.text.split(' ');
+      if (args.length < 2) return ctx.reply('⚠️ Формат: /del email@gmail.com');
+
+      const targetEmail = args[1];
+
+      try {
+        let allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" }) || [];
+        const initialLength = allAccounts.length;
+        allAccounts = allAccounts.filter(acc => acc.email !== targetEmail);
+
+        if (allAccounts.length === initialLength) {
+          return ctx.reply(`⚠️ Аккаунт с почтой ${targetEmail} не найден в базе.`);
+        }
+
+        await env.ACCOUNTS_KV.put("accounts_list", JSON.stringify(allAccounts));
+        return ctx.reply(`🗑 Аккаунт ${targetEmail} успешно удален!\nОсталось аккаунтов: ${allAccounts.length}`);
+      } catch (e) {
+        return ctx.reply(`❌ Ошибка: ${e.message}`);
+      }
+    });
+
+    // Посмотреть список аккаунтов: /list
+    bot.command('list', async (ctx) => {
+      try {
+        let allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" }) || [];
+        if (allAccounts.length === 0) return ctx.reply('📭 База аккаунтов пуста.');
+
+        let msg = `📋 Список аккаунтов (${allAccounts.length} шт):\n\n`;
+        allAccounts.forEach((acc, index) => {
+          msg += `${index + 1}. 📧 ${acc.email}\n    🔑 ${acc.password}\n\n`;
+        });
+
+        if (msg.length > 4000) {
+          msg = msg.substring(0, 4000) + "\n... (список слишком длинный)";
+        }
+        return ctx.reply(msg);
+      } catch (e) {
+        return ctx.reply(`❌ Ошибка: ${e.message}`);
+      }
+    });
+
+    try {
+      await bot.handleUpdate(await request.json());
+    } catch (e) {}
+
+    return new Response('OK');
   }
 };
