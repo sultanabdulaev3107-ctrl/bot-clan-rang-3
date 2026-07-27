@@ -28,10 +28,9 @@ async function setRank(token, url) {
 }
 
 export default {
-  // 1. Автоматический запуск по расписанию (по 19 аккаунтов на парт, отчеты только вам)
   async scheduled(event, env, ctx) {
     const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
-    const chatId = env.ADMIN_CHAT_ID; // 7729315191
+    const chatId = env.ADMIN_CHAT_ID;
     
     const allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" });
     if (!allAccounts || allAccounts.length === 0) return;
@@ -65,20 +64,17 @@ export default {
     }
   },
 
-严// 2. Обработка команд (строгая проверка на ваш ID)
   async fetch(request, env, ctx) {
     const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
     const ADMIN_ID = env.ADMIN_CHAT_ID.toString();
 
-    // Промежуточная проверка внутри Telegraf: если пишет не создатель — игнорируем
     bot.use(async (ctx, next) => {
       if (!ctx.chat || ctx.chat.id.toString() !== ADMIN_ID) {
-        return; // Молча игнорируем чужие сообщения и команды
+        return;
       }
       return next();
     });
 
-    // Добавить аккаунт: /add email password
     bot.command('add', async (ctx) => {
       const args = ctx.message.text.split(' ');
       if (args.length < 3) return ctx.reply('⚠️ Формат: /add email password');
@@ -99,7 +95,6 @@ export default {
       }
     });
 
-    // Удалить аккаунт: /del email
     bot.command('del', async (ctx) => {
       const args = ctx.message.text.split(' ');
       if (args.length < 2) return ctx.reply('⚠️ Формат: /del email@gmail.com');
@@ -122,7 +117,6 @@ export default {
       }
     });
 
-    // Посмотреть список аккаунтов: /list
     bot.command('list', async (ctx) => {
       try {
         let allAccounts = await env.ACCOUNTS_KV.get("accounts_list", { type: "json" }) || [];
