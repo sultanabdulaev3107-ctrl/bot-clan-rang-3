@@ -1,0 +1,9 @@
+{
+  "name": "bot-clan-rang-3",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.7.9",
+    "telegraf": "^4.16.3"
+  }
+}
