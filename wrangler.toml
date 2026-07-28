@@ -4,7 +4,7 @@ compatibility_date = "2026-05-23"
 compatibility_flags = ["nodejs_compat"]
 
 [triggers]
-crons = ["0 17 * * *", "5 17 * * *", "10 17 * * *", "15 17 * * *", "20 17 * * *", "25 17 * * *"]
+crons = ["*/5 17 * * *"]
 
 [vars]
 TELEGRAM_BOT_TOKEN = "8659338389:AAFZuXQNnRmWUHuTQa8XW_6C6_53sIRVDkY"
